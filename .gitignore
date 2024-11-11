@@ -1,0 +1,70 @@
+# Byte-compiled files
+*.pyc
+*.pyo
+__pycache__/
+
+# Virtual environment
+env/
+venv/
+ENV/
+*.env
+
+# Django stuff
+db.sqlite3
+media/
+staticfiles/
+*.log
+*.pot
+*.pyc
+*.pyo
+__pycache__/
+*.pid
+
+# Local environment variables
+.env
+*.local
+*.dev
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Coverage and testing
+htmlcov/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Migrations
+*/migrations/*.py
+!*/migrations/__init__.py
+
+# Logs and debug output
+*.log
+
+# Node modules if you're using npm for front-end
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Compiled code for Django Compressor
+compressor/
+
+# Deploy configurations (optional)
+*.swp
+*.bak
+*.old
+*.orig
+*.rej
