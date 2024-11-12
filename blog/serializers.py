@@ -201,3 +201,30 @@ class BlogPostSerializer(serializers.ModelSerializer):
         if len(value.strip()) < 10:
             raise serializers.ValidationError("Content must be at least 10 characters long.")
         return value
+    
+class BlogPostEditSerializer(serializers.ModelSerializer):
+    """
+    Serializer for editing a blog post.
+    """
+    class Meta:
+        model = BlogPost
+        fields = ['title', 'content', 'updated_at']
+        read_only_fields = ['updated_at']
+
+    def validate_title(self, value):
+        """
+        Validate that the title is not empty and doesn't contain offensive language.
+        """
+        if not value.strip():
+            raise serializers.ValidationError("Title cannot be empty.")
+        if "offensive" in value.lower():
+            raise serializers.ValidationError("Title contains prohibited language.")
+        return value
+
+    def validate_content(self, value):
+        """
+        Ensure the content is sufficiently informative.
+        """
+        if len(value.strip()) < 10:
+            raise serializers.ValidationError("Content must be at least 10 characters long.")
+        return value

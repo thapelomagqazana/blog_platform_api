@@ -7,7 +7,8 @@ from rest_framework.permissions import AllowAny
 from .models import BlogPost
 from .serializers import (SignUpSerializer, PasswordResetRequestSerializer, 
                           PasswordResetConfirmSerializer, AdminSignUpSerializer, 
-                          AdminLoginSerializer, BlogPostSerializer)
+                          AdminLoginSerializer, BlogPostSerializer, BlogPostEditSerializer)
+from .permissions import IsAuthorPermission
 
 class SignUpView(CreateAPIView):
     """API endpoint for user registration."""
@@ -118,3 +119,30 @@ class BlogPostCreateView(generics.CreateAPIView):
         Save the blog post with the logged-in user as the author.
         """
         serializer.save(author=self.request.user)
+
+class BlogPostEditView(generics.UpdateAPIView):
+    """
+    API view for editing a blog post.
+    """
+    queryset = BlogPost.objects.all()
+    serializer_class = BlogPostEditSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Restrict the queryset to posts owned by the authenticated user.
+        """
+        return BlogPost.objects.filter(author=self.request.user)
+
+class BlogPostDeleteView(generics.DestroyAPIView):
+    """
+    API view for deleting a blog post.
+    """
+    queryset = BlogPost.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Restrict the queryset to posts owned by the authenticated user.
+        """
+        return BlogPost.objects.filter(author=self.request.user)
