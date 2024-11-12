@@ -7,8 +7,10 @@ from rest_framework.permissions import AllowAny
 from .models import BlogPost
 from .serializers import (SignUpSerializer, PasswordResetRequestSerializer, 
                           PasswordResetConfirmSerializer, AdminSignUpSerializer, 
-                          AdminLoginSerializer, BlogPostSerializer, BlogPostEditSerializer)
+                          AdminLoginSerializer, BlogPostSerializer, BlogPostEditSerializer,
+                          BlogPostListSerializer)
 from .permissions import IsAuthorPermission
+from .pagination import CustomPagination
 
 class SignUpView(CreateAPIView):
     """API endpoint for user registration."""
@@ -146,3 +148,12 @@ class BlogPostDeleteView(generics.DestroyAPIView):
         Restrict the queryset to posts owned by the authenticated user.
         """
         return BlogPost.objects.filter(author=self.request.user)
+
+class BlogPostListView(generics.ListAPIView):
+    """
+    API view for listing all blog posts.
+    """
+    queryset = BlogPost.objects.all().order_by('-created_at')
+    serializer_class = BlogPostListSerializer
+    permission_classes = [permissions.AllowAny]  # Accessible by anyone
+    pagination_class = CustomPagination  # Add pagination if required

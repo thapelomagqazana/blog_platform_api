@@ -228,3 +228,15 @@ class BlogPostEditSerializer(serializers.ModelSerializer):
         if len(value.strip()) < 10:
             raise serializers.ValidationError("Content must be at least 10 characters long.")
         return value
+
+class BlogPostListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for displaying blog posts.
+    """
+    author = serializers.StringRelatedField()  # Displays the author's username
+
+    class Meta:
+        model = BlogPost
+        fields = ['id', 'title', 'content', 'author', 'created_at', 'updated_at']
+    
+

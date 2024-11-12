@@ -192,3 +192,50 @@ class BlogPostDeleteTests(APITestCase):
         """
         response = self.client.delete(self.delete_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+class BlogPostListTests(APITestCase):
+    """
+    Tests for viewing a list of blog posts.
+    """
+
+    def setUp(self):
+        """
+        Set up test data including users and blog posts.
+        """
+        self.user = CustomUser.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='StrongPassword123'
+        )
+        self.posts = [
+            BlogPost.objects.create(title=f'Post {i}', content=f'Content {i}', author=self.user)
+            for i in range(1, 21)  # Create 20 blog posts
+        ]
+        self.list_url = reverse('post_list')
+
+    def test_view_posts(self):
+        """
+        Test retrieving a list of blog posts.
+        """
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 10)  # Default page size is 10
+        self.assertEqual(response.data["results"][0]['title'], 'Post 20')
+
+    def test_pagination(self):
+        """
+        Test pagination of blog posts.
+        """
+        response = self.client.get(self.list_url + '?page=2')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 10)
+        self.assertEqual(response.data["results"][0]['title'], 'Post 10')
+
+    def test_empty_list(self):
+        """
+        Test retrieving an empty list of blog posts.
+        """
+        BlogPost.objects.all().delete()
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["results"], [])

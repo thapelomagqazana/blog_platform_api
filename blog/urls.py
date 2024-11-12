@@ -3,7 +3,8 @@ from .views import (SignUpView, CustomTokenObtainPairView,
                     CustomTokenRefreshView, PasswordResetRequestView, 
                     PasswordResetConfirmView, AdminSignUpView, 
                     AdminLoginView, BlogPostCreateView,
-                    BlogPostEditView, BlogPostDeleteView)
+                    BlogPostEditView, BlogPostDeleteView,
+                    BlogPostListView)
 
 urlpatterns = [
     path('signup/', SignUpView.as_view(), name='signup'),
@@ -16,5 +17,6 @@ urlpatterns = [
     path('posts/create/', BlogPostCreateView.as_view(), name='post_create'),
     path('posts/<int:pk>/edit/', BlogPostEditView.as_view(), name='post_edit'),
     path('posts/<int:pk>/delete/', BlogPostDeleteView.as_view(), name='post_delete'),
+    path('posts/', BlogPostListView.as_view(), name='post_list'),
 
 ]
