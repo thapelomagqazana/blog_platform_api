@@ -115,3 +115,60 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         """
         self.user.set_password(self.validated_data['new_password'])
         self.user.save()
+
+class AdminSignUpSerializer(serializers.ModelSerializer):
+    """
+    Serializer for admin sign-up. Validates admin code.
+    """
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True)
+    admin_code = serializers.CharField(write_only=True)  # Admin verification code
+
+    class Meta:
+        model = CustomUser
+        fields = ['username', 'email', 'password', 'password2', 'admin_code']
+
+    def validate_admin_code(self, value):
+        """
+        Validate the provided admin code.
+        """
+        if value != "SECRET_ADMIN_CODE":  # Replace with a secure code or verification logic
+            raise serializers.ValidationError("Invalid admin code.")
+        return value
+
+    def validate(self, data):
+        """
+        Validate that passwords match.
+        """
+        if data['password'] != data['password2']:
+            raise serializers.ValidationError({"password": "Passwords do not match."})
+        return data
+
+    def create(self, validated_data):
+        """
+        Create a new admin user.
+        """
+        validated_data.pop('password2')
+        validated_data.pop('admin_code')
+        user = CustomUser.objects.create(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            is_admin=True
+        )
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
+
+class AdminLoginSerializer(TokenObtainPairSerializer):
+    """
+    Serializer for admin login. Ensures only admins can log in.
+    """
+
+    def validate(self, attrs):
+        """
+        Ensure the user is an admin before issuing tokens.
+        """
+        data = super().validate(attrs)
+        if not self.user.is_admin:
+            raise serializers.ValidationError({"error": "You are not authorized to log in as an admin."})
+        return data

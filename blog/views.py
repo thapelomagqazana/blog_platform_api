@@ -4,7 +4,7 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from .serializers import SignUpSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+from .serializers import SignUpSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, AdminSignUpSerializer, AdminLoginSerializer
 
 class SignUpView(CreateAPIView):
     """API endpoint for user registration."""
@@ -79,3 +79,26 @@ class PasswordResetConfirmView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+
+class AdminSignUpView(APIView):
+    """
+    API view for admin sign-up.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """
+        Handle POST request to register a new admin.
+        """
+        serializer = AdminSignUpSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Admin account created successfully."}, status=status.HTTP_201_CREATED)
+
+
+class AdminLoginView(TokenObtainPairView):
+    """
+    API view for admin login.
+    """
+    permission_classes = [AllowAny]
+    serializer_class = AdminLoginSerializer
