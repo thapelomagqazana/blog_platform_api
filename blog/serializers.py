@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import CustomUser
+from .models import CustomUser, BlogPost
 
 class SignUpSerializer(serializers.ModelSerializer):
     """Serializer for user registration with password validation."""
@@ -172,3 +172,32 @@ class AdminLoginSerializer(TokenObtainPairSerializer):
         if not self.user.is_admin:
             raise serializers.ValidationError({"error": "You are not authorized to log in as an admin."})
         return data
+
+class BlogPostSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating and retrieving blog posts.
+    """
+    author = serializers.StringRelatedField(read_only=True) # Show the author's username
+
+    class Meta:
+        model = BlogPost
+        fields = ['id', 'title', 'content', 'author', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'author', 'created_at', 'updated_at']
+
+    def validate_title(self, value):
+        """
+        Ensure the title is not empty and doesn't contain offensive language.
+        """
+        if not value.strip():
+            raise serializers.ValidationError("Title cannot be empty.")
+        if "offensive" in value.lower():
+            raise serializers.ValidationError("Title contains prohibited language.")
+        return value
+
+    def validate_content(self, value):
+        """
+        Ensure the content is not too short.
+        """
+        if len(value.strip()) < 10:
+            raise serializers.ValidationError("Content must be at least 10 characters long.")
+        return value

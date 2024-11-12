@@ -1,10 +1,13 @@
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework import status
+from rest_framework import status, generics, permissions
 from rest_framework.generics import CreateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from .serializers import SignUpSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, AdminSignUpSerializer, AdminLoginSerializer
+from .models import BlogPost
+from .serializers import (SignUpSerializer, PasswordResetRequestSerializer, 
+                          PasswordResetConfirmSerializer, AdminSignUpSerializer, 
+                          AdminLoginSerializer, BlogPostSerializer)
 
 class SignUpView(CreateAPIView):
     """API endpoint for user registration."""
@@ -102,3 +105,16 @@ class AdminLoginView(TokenObtainPairView):
     """
     permission_classes = [AllowAny]
     serializer_class = AdminLoginSerializer
+
+class BlogPostCreateView(generics.CreateAPIView):
+    """
+    API view for creating a new blog post.
+    """
+    serializer_class = BlogPostSerializer
+    permission_classes = [permissions.IsAuthenticated] # Ensures only logged-in users can create blog posts.
+
+    def perform_create(self, serializer):
+        """
+        Save the blog post with the logged-in user as the author.
+        """
+        serializer.save(author=self.request.user)
