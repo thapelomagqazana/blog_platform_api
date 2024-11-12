@@ -1,4 +1,10 @@
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.mail import send_mail
 from rest_framework import serializers
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.urls import reverse
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import CustomUser
@@ -44,3 +50,68 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             "email": self.user.email,
         }
         return data
+    
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """
+    Serializer for handling password reset requests using the CustomUser model.
+    """
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        """
+        Check if the email exists in the CustomUser model.
+        """
+        if not CustomUser.objects.filter(email=value).exists():
+            raise serializers.ValidationError({"email": ["There is no user with this email address."]})
+        return value
+
+    def send_reset_email(self):
+        """
+        Send password reset email with a unique token.
+        """
+        email = self.validated_data['email']
+        user = CustomUser.objects.get(email=email)
+        token_generator = PasswordResetTokenGenerator()
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = token_generator.make_token(user)
+        
+        reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
+        send_mail(
+            subject="Password Reset Request",
+            message=f"Use the link below to reset your password:\n{reset_url}",
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[email],
+        )
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """
+    Serializer for confirming password reset using the CustomUser model.
+    """
+    new_password = serializers.CharField(write_only=True)
+    uid = serializers.CharField()
+    token = serializers.CharField()
+
+    def validate(self, data):
+        """
+        Validate the UID and token, ensuring they correspond to a valid user.
+        """
+        try:
+            user_id = urlsafe_base64_encode(data['uid']).decode()
+            user = CustomUser.objects.get(pk=user_id)
+        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+            raise serializers.ValidationError({"uid": "Invalid UID or user not found."})
+
+        token_generator = PasswordResetTokenGenerator()
+        if not token_generator.check_token(user, data['token']):
+            raise serializers.ValidationError({"token": "Invalid or expired token."})
+
+        self.user = user
+        return data
+
+    def save(self):
+        """
+        Save the new password for the user.
+        """
+        self.user.set_password(self.validated_data['new_password'])
+        self.user.save()

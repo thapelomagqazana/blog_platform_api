@@ -1,9 +1,10 @@
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework import status
 from rest_framework.generics import CreateAPIView
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from .serializers import SignUpSerializer
+from .serializers import SignUpSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 
 class SignUpView(CreateAPIView):
     """API endpoint for user registration."""
@@ -53,3 +54,28 @@ class CustomTokenRefreshView(TokenRefreshView):
         Handle POST request to refresh JWT tokens.
         """
         return super().post(request, *args, **kwargs)
+
+class PasswordResetRequestView(APIView):
+    """
+    Handles password reset requests.
+    """
+
+    permission_classes = [AllowAny]  # Ensure this view is accessible without authentication
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.send_reset_email()
+        return Response({"message": "Password reset email sent."}, status=status.HTTP_200_OK)
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    Handles password reset confirmation.
+    """
+    permission_classes = [AllowAny]  # Ensure this view is accessible without authentication
+    
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
