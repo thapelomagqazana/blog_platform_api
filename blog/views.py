@@ -1,178 +1,50 @@
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework import status, generics, permissions
-from rest_framework.generics import CreateAPIView
-from rest_framework.views import APIView
+from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from rest_framework.exceptions import NotFound
-from .models import BlogPost
-from .serializers import (SignUpSerializer, PasswordResetRequestSerializer, 
-                          PasswordResetConfirmSerializer, AdminSignUpSerializer, 
-                          AdminLoginSerializer, BlogPostSerializer, BlogPostEditSerializer,
-                          BlogPostListSerializer, BlogPostDetailSerializer)
-from .permissions import IsAuthorPermission
-from .pagination import CustomPagination
+from django.contrib.auth.models import update_last_login
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate, get_user_model
+from .serializers import UserSignupSerializer
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-class SignUpView(CreateAPIView):
-    """API endpoint for user registration."""
-    serializer_class = SignUpSerializer
-    permission_classes = [AllowAny]  # Ensure anyone can access this endpoint
+User = get_user_model()
 
-    def post(self, request, *args, **kwargs):
-        """Handle POST request to create a new user."""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)  # Validates input data
-        self.perform_create(serializer)
-        return Response(
-            {"message": "User created successfully."},
-            status=status.HTTP_201_CREATED
-        )
+class UserSignupView(generics.CreateAPIView):
+    """API view for user signup."""
+    queryset = User.objects.all()
+    permission_classes = [AllowAny]
+    serializer_class = UserSignupSerializer
 
-    def perform_create(self, serializer):
-        """Save the serializer to create the user."""
-        serializer.save()
-
-class CustomTokenObtainPairView(TokenObtainPairView):
-    """
-    Custom view for obtaining access and refresh tokens upon user login.
-    """
+class LoginView(APIView):
+    """API view for user login."""
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        """
-        Handle POST request to provide JWT tokens.
-        """
-        serializer = self.get_serializer(data=request.data)
-        try:
-            serializer.is_valid(raise_exception=True)
-        except Exception as e:
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        """Handle user login."""
+        email = request.data.get('email')
+        password = request.data.get('password')
+        print(f"Login attempt: email={email}, password={password}")
 
-class CustomTokenRefreshView(TokenRefreshView):
-    """
-    Custom view for refreshing access tokens using a valid refresh token.
-    """
-    permission_classes = [AllowAny]
+        user = authenticate(request, username=email, password=password)
+        print(f"Authenticated user: {user}")
 
-    def post(self, request, *args, **kwargs):
-        """
-        Handle POST request to refresh JWT tokens.
-        """
-        return super().post(request, *args, **kwargs)
+        if user is not None:
+            if not user.is_active:
+                return Response({'error': 'Account is inactive.'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            refresh = RefreshToken.for_user(user)
+            update_last_login(None, user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            })
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-class PasswordResetRequestView(APIView):
-    """
-    Handles password reset requests.
-    """
-
-    permission_classes = [AllowAny]  # Ensure this view is accessible without authentication
-    def post(self, request):
-        serializer = PasswordResetRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.send_reset_email()
-        return Response({"message": "Password reset email sent."}, status=status.HTTP_200_OK)
-
-
-class PasswordResetConfirmView(APIView):
-    """
-    Handles password reset confirmation.
-    """
-    permission_classes = [AllowAny]  # Ensure this view is accessible without authentication
-    
-    def post(self, request):
-        serializer = PasswordResetConfirmSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
-
-class AdminSignUpView(APIView):
-    """
-    API view for admin sign-up.
-    """
+class PasswordResetView(APIView):
+    """View for handling password reset."""
     permission_classes = [AllowAny]
 
     def post(self, request):
-        """
-        Handle POST request to register a new admin.
-        """
-        serializer = AdminSignUpSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"message": "Admin account created successfully."}, status=status.HTTP_201_CREATED)
-
-
-class AdminLoginView(TokenObtainPairView):
-    """
-    API view for admin login.
-    """
-    permission_classes = [AllowAny]
-    serializer_class = AdminLoginSerializer
-
-class BlogPostCreateView(generics.CreateAPIView):
-    """
-    API view for creating a new blog post.
-    """
-    serializer_class = BlogPostSerializer
-    permission_classes = [permissions.IsAuthenticated] # Ensures only logged-in users can create blog posts.
-
-    def perform_create(self, serializer):
-        """
-        Save the blog post with the logged-in user as the author.
-        """
-        serializer.save(author=self.request.user)
-
-class BlogPostEditView(generics.UpdateAPIView):
-    """
-    API view for editing a blog post.
-    """
-    queryset = BlogPost.objects.all()
-    serializer_class = BlogPostEditSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        """
-        Restrict the queryset to posts owned by the authenticated user.
-        """
-        return BlogPost.objects.filter(author=self.request.user)
-
-class BlogPostDeleteView(generics.DestroyAPIView):
-    """
-    API view for deleting a blog post.
-    """
-    queryset = BlogPost.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        """
-        Restrict the queryset to posts owned by the authenticated user.
-        """
-        return BlogPost.objects.filter(author=self.request.user)
-
-class BlogPostListView(generics.ListAPIView):
-    """
-    API view for listing all blog posts.
-    """
-    queryset = BlogPost.objects.all().order_by('-created_at')
-    serializer_class = BlogPostListSerializer
-    permission_classes = [permissions.AllowAny]  # Accessible by anyone
-    pagination_class = CustomPagination  # Add pagination if required
-
-class BlogPostDetailView(generics.RetrieveAPIView):
-    """
-    API view for retrieving the details of a specific blog post.
-    """
-    queryset = BlogPost.objects.all()
-    serializer_class = BlogPostDetailSerializer
-    permission_classes = [permissions.AllowAny]  # Publicly accessible
-
-    def get_object(self):
-        """
-        Retrieve a specific blog post by its ID, handling potential errors.
-        """
-        try:
-            post = BlogPost.objects.get(pk=self.kwargs['pk'])
-            return post
-        except BlogPost.DoesNotExist:
-            raise NotFound(detail="Blog post not found.")
+        # Implement password reset here.
+        pass  # Replace with logic
