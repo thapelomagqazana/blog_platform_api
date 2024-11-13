@@ -4,11 +4,12 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import NotFound
 from .models import BlogPost
 from .serializers import (SignUpSerializer, PasswordResetRequestSerializer, 
                           PasswordResetConfirmSerializer, AdminSignUpSerializer, 
                           AdminLoginSerializer, BlogPostSerializer, BlogPostEditSerializer,
-                          BlogPostListSerializer)
+                          BlogPostListSerializer, BlogPostDetailSerializer)
 from .permissions import IsAuthorPermission
 from .pagination import CustomPagination
 
@@ -157,3 +158,21 @@ class BlogPostListView(generics.ListAPIView):
     serializer_class = BlogPostListSerializer
     permission_classes = [permissions.AllowAny]  # Accessible by anyone
     pagination_class = CustomPagination  # Add pagination if required
+
+class BlogPostDetailView(generics.RetrieveAPIView):
+    """
+    API view for retrieving the details of a specific blog post.
+    """
+    queryset = BlogPost.objects.all()
+    serializer_class = BlogPostDetailSerializer
+    permission_classes = [permissions.AllowAny]  # Publicly accessible
+
+    def get_object(self):
+        """
+        Retrieve a specific blog post by its ID, handling potential errors.
+        """
+        try:
+            post = BlogPost.objects.get(pk=self.kwargs['pk'])
+            return post
+        except BlogPost.DoesNotExist:
+            raise NotFound(detail="Blog post not found.")

@@ -239,3 +239,40 @@ class BlogPostListTests(APITestCase):
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["results"], [])
+
+class BlogPostDetailTests(APITestCase):
+    """
+    Tests for viewing the details of a specific blog post.
+    """
+
+    def setUp(self):
+        """
+        Set up test data including a test user and a blog post.
+        """
+        self.user = CustomUser.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='StrongPassword123'
+        )
+        self.post = BlogPost.objects.create(
+            title='Sample Post',
+            content='This is a sample blog post.',
+            author=self.user
+        )
+        self.detail_url = reverse('post_detail', kwargs={'pk': self.post.pk})
+
+    def test_view_specific_post(self):
+        """
+        Test retrieving a specific blog post by ID.
+        """
+        response = self.client.get(self.detail_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['title'], 'Sample Post')
+
+    def test_view_nonexistent_post(self):
+        """
+        Test retrieving a post that does not exist.
+        """
+        response = self.client.get(reverse('post_detail', kwargs={'pk': 999}))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['detail'], 'Blog post not found.')

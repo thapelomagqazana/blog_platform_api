@@ -238,5 +238,14 @@ class BlogPostListSerializer(serializers.ModelSerializer):
     class Meta:
         model = BlogPost
         fields = ['id', 'title', 'content', 'author', 'created_at', 'updated_at']
-    
+
+class BlogPostDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for displaying details of a specific blog post.
+    """
+    author = serializers.StringRelatedField()  # Displays the author's username
+
+    class Meta:
+        model = BlogPost
+        fields = ["id", "title", "content", "author", "created_at", "updated_at"]    
 
