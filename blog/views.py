@@ -12,9 +12,10 @@ from django.core.exceptions import PermissionDenied
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from .models import BlogPost
-from .serializers import (PasswordResetRequestSerializer, PasswordResetConfirmSerializer
-                          , BlogPostSerializer, BlogPostDetailSerializer)
+from .models import BlogPost, Category, Tag
+from .serializers import (PasswordResetRequestSerializer, PasswordResetConfirmSerializer, 
+                          BlogPostSerializer, BlogPostDetailSerializer,
+                            CategorySerializer, TagSerializer)
 
 User = get_user_model()
 
@@ -84,13 +85,43 @@ class PasswordResetConfirmView(APIView):
             return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+class CategoryListView(generics.ListAPIView):
+    """
+    View for listing all categories.
+    """
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [AllowAny]
+
+class TagListView(generics.ListAPIView):
+    """
+    View for listing all tags.
+    """
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    permission_classes = [AllowAny]
+    
 class BlogPostListView(generics.ListAPIView):
     """
-    View for listing all blog posts.
+    View for listing blog posts with optional filtering by category or tag.
     """
-    queryset = BlogPost.objects.all().order_by("-created_at")
     serializer_class = BlogPostSerializer
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        """
+        Optionally filter blog posts by category or tag.
+        """
+        queryset = BlogPost.objects.all().order_by("-created_at")
+        category_slug = self.request.query_params.get('category')
+        tag_slug = self.request.query_params.get('tag')
+
+        if category_slug:
+            queryset = queryset.filter(category__slug=category_slug)
+        if tag_slug:
+            queryset = queryset.filter(tags__slug=tag_slug)
+
+        return queryset
 
 class BlogPostDetailView(generics.RetrieveAPIView):
     """

@@ -5,7 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode
-from .models import BlogPost
+from .models import BlogPost, Category, Tag
 
 User = get_user_model()
 
@@ -72,14 +72,67 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.save()
 
+class CategorySerializer(serializers.ModelSerializer):
+    """
+    Serializer for categories.
+    """
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'slug']
+
+class TagSerializer(serializers.ModelSerializer):
+    """
+    Serializer for tags.
+    """
+    class Meta:
+        model = Tag
+        fields = ['id', 'name', 'slug']
+
 class BlogPostSerializer(serializers.ModelSerializer):
     """
     Serializer for creating and updating blog posts.
+    Includes nested category and tags.
     """
+    category = CategorySerializer()
+    tags = TagSerializer(many=True)
     class Meta:
         model = BlogPost
-        fields = ['id', 'title', 'content', 'author', 'created_at', 'updated_at']
+        fields = ['id', 'title', 'content', 'author', 'category', 'tags', 'created_at', 'updated_at']
         read_only_fields = ['id', 'author', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        """
+        Create a new blog post with category and tags.
+        """
+        category_data = validated_data.pop('category')
+        tags_data = validated_data.pop('tags')
+        category, _ = Category.objects.get_or_create(**category_data)
+        blog_post = BlogPost.objects.create(category=category, **validated_data)
+
+        for tag_data in tags_data:
+            tag, _ = Tag.objects.get_or_create(**tag_data)
+            blog_post.tags.add(tag)
+
+        return blog_post
+
+    def update(self, instance, validated_data):
+        """
+        Update a blog post and its related category and tags.
+        """
+        category_data = validated_data.pop('category', None)
+        tags_data = validated_data.pop('tags', None)
+
+        if category_data:
+            category, _ = Category.objects.get_or_create(**category_data)
+            instance.category = category
+
+        if tags_data:
+            instance.tags.clear()
+            for tag_data in tags_data:
+                tag, _ = Tag.objects.get_or_create(**tag_data)
+                instance.tags.add(tag)
+
+        return super().update(instance, validated_data)
 
 class BlogPostDetailSerializer(serializers.ModelSerializer):
     """

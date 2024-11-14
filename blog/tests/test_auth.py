@@ -104,28 +104,3 @@ class TestUserLogin:
         assert response.status_code == 401
         assert "error" in response.data
 
-# @pytest.mark.django_db
-# class TestPasswordReset:
-#     """Tests for password reset."""
-
-#     def test_password_reset_request(self, api_client, create_user):
-#         """Test initiating password reset."""
-#         user = create_user()
-#         data = {"email": user.email}
-#         response = api_client.post('/api/users/password-reset/', data)
-#         assert response.status_code == 200
-#         assert "email" in response.data
-
-#     def test_password_reset_nonexistent_email(self, api_client):
-#         """Test password reset for non-existent email."""
-#         data = {"email": "nonexistent@example.com"}
-#         response = api_client.post('/api/users/password-reset/', data)
-#         assert response.status_code == 404
-#         assert "error" in response.data
-
-#     def test_password_reset_invalid_email_format(self, api_client):
-#         """Test password reset with invalid email format."""
-#         data = {"email": "invalid-email-format"}
-#         response = api_client.post('/api/users/password-reset/', data)
-#         assert response.status_code == 400
-#         assert "email" in response.data
