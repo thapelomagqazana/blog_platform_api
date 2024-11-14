@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (UserSignupView, LoginView, PasswordResetRequestView,
                      PasswordResetConfirmView, BlogPostListView, BlogPostDetailView,
                      BlogPostCreateView, BlogPostUpdateView, BlogPostDeleteView,
-                     CategoryListView, TagListView)
+                     CategoryListView, TagListView, CommentListCreateView,
+                     CommentDeleteView)
 
 urlpatterns = [
     path('signup/', UserSignupView.as_view(), name='signup'),
@@ -16,4 +17,6 @@ urlpatterns = [
     path('posts/<int:pk>/delete/', BlogPostDeleteView.as_view(), name='post_delete'),
     path('categories/', CategoryListView.as_view(), name='category_list'),
     path('tags/', TagListView.as_view(), name='tag_list'),
+    path('posts/<int:post_id>/comments/', CommentListCreateView.as_view(), name='comment_list_create'),
+    path('comments/<int:pk>/delete/', CommentDeleteView.as_view(), name='comment_delete'),
 ]

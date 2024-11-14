@@ -5,7 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode
-from .models import BlogPost, Category, Tag
+from .models import BlogPost, Category, Tag, Comment
 
 User = get_user_model()
 
@@ -143,3 +143,30 @@ class BlogPostDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'content', 'author', 'created_at', 'updated_at']
         read_only_fields = ['id', 'author', 'created_at', 'updated_at']
 
+class ReplySerializer(serializers.ModelSerializer):
+    """
+    Serializer for nested replies.
+    """
+    author = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'author', 'content', 'created_at', 'updated_at']
+
+class CommentSerializer(serializers.ModelSerializer):
+    """
+    Serializer for comments.
+    """
+    author = serializers.StringRelatedField(read_only=True)
+    replies = ReplySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'author', 'content', 'post', 'parent', 'replies', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'author', 'replies', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        """
+        Custom create method to ensure valid nested replies.
+        """
+        return Comment.objects.create(**validated_data)

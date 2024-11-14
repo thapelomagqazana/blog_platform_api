@@ -4,7 +4,7 @@ from django.contrib.auth.models import update_last_login
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate, get_user_model
 from .serializers import UserSignupSerializer
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.core.mail import send_mail
@@ -12,10 +12,11 @@ from django.core.exceptions import PermissionDenied
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from .models import BlogPost, Category, Tag
+from .models import BlogPost, Category, Tag, Comment
 from .serializers import (PasswordResetRequestSerializer, PasswordResetConfirmSerializer, 
                           BlogPostSerializer, BlogPostDetailSerializer,
-                            CategorySerializer, TagSerializer)
+                            CategorySerializer, TagSerializer,
+                            CommentSerializer)
 
 User = get_user_model()
 
@@ -173,4 +174,39 @@ class BlogPostDeleteView(generics.DestroyAPIView):
         """
         if instance.author != self.request.user:
             raise PermissionDenied("You do not have permission to delete this post.")
+        instance.delete()
+
+class CommentListCreateView(generics.ListCreateAPIView):
+    """
+    View for listing and creating comments on a blog post.
+    """
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        """
+        Filter comments by post ID.
+        """
+        post_id = self.kwargs.get('post_id')
+        return Comment.objects.filter(post__id=post_id, parent__isnull=True)
+
+    def perform_create(self, serializer):
+        """
+        Automatically set the author to the logged-in user.
+        """
+        serializer.save(author=self.request.user)
+
+class CommentDeleteView(generics.DestroyAPIView):
+    """
+    View for deleting a comment.
+    """
+    queryset = Comment.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        """
+        Ensure only the author can delete their comment.
+        """
+        if instance.author != self.request.user:
+            raise PermissionDenied("You do not have permission to delete this comment.")
         instance.delete()
