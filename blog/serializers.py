@@ -2,6 +2,9 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import force_str, force_bytes, smart_str, DjangoUnicodeDecodeError
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 User = get_user_model()
 
@@ -31,3 +34,39 @@ class UserSignupSerializer(serializers.ModelSerializer):
         validated_data.pop('password2')
         user = User.objects.create_user(**validated_data)
         return user
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Serializer for requesting password reset."""
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        """Ensure the email belongs to a registered user."""
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("There is no user registered with this email address.")
+        return value
+    
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Serializer for confirming and resetting the password."""
+    uidb64 = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, attrs):
+        try:
+            uid = smart_str(urlsafe_base64_decode(attrs['uidb64']))
+            user = User.objects.get(id=uid)
+        except (DjangoUnicodeDecodeError, User.DoesNotExist):
+            raise serializers.ValidationError("Invalid UID")
+
+        token = attrs.get('token')
+        if not PasswordResetTokenGenerator().check_token(user, token):
+            raise serializers.ValidationError("Invalid or expired token.")
+
+        attrs['user'] = user
+        return attrs
+
+    def save(self):
+        """Save the new password."""
+        user = self.validated_data['user']
+        user.set_password(self.validated_data['new_password'])
+        user.save()
