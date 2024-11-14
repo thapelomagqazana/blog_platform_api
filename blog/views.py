@@ -8,10 +8,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.core.mail import send_mail
+from django.core.exceptions import PermissionDenied
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+from .models import BlogPost
+from .serializers import (PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+                          , BlogPostSerializer, BlogPostDetailSerializer)
 
 User = get_user_model()
 
@@ -80,3 +83,63 @@ class PasswordResetConfirmView(APIView):
             serializer.save()
             return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class BlogPostListView(generics.ListAPIView):
+    """
+    View for listing all blog posts.
+    """
+    queryset = BlogPost.objects.all().order_by("-created_at")
+    serializer_class = BlogPostSerializer
+    permission_classes = [AllowAny]
+
+class BlogPostDetailView(generics.RetrieveAPIView):
+    """
+    View for retrieving a specific blog post by ID.
+    """
+    queryset = BlogPost.objects.all()
+    serializer_class = BlogPostDetailSerializer
+    permission_classes = [AllowAny]
+
+class BlogPostCreateView(generics.CreateAPIView):
+    """
+    View for creating a new blog post.
+    """
+    queryset = BlogPost.objects.all()
+    serializer_class = BlogPostSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        """Add the current logged-in user as the author of the blog post."""
+        serializer.save(author=self.request.user)
+
+class BlogPostUpdateView(generics.UpdateAPIView):
+    """
+    View for updating an existing blog post.
+    """
+    queryset = BlogPost.objects.all()
+    serializer_class = BlogPostSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_update(self, serializer):
+        """
+        Ensure only the author can update the post.
+        """
+        post = self.get_object()
+        if post.author != self.request.user:
+            raise PermissionDenied("You do not have permission to edit this post.")
+        serializer.save(author=self.request.user)
+
+class BlogPostDeleteView(generics.DestroyAPIView):
+    """
+    View for deleting an existing blog post.
+    """
+    queryset = BlogPost.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        """
+        Ensure only the author can delete the post.
+        """
+        if instance.author != self.request.user:
+            raise PermissionDenied("You do not have permission to delete this post.")
+        instance.delete()

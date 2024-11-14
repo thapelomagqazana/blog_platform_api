@@ -3,8 +3,9 @@ from django.contrib.auth import get_user_model
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.utils.encoding import force_str, force_bytes, smart_str, DjangoUnicodeDecodeError
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import smart_str, DjangoUnicodeDecodeError
+from django.utils.http import urlsafe_base64_decode
+from .models import BlogPost
 
 User = get_user_model()
 
@@ -70,3 +71,22 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user = self.validated_data['user']
         user.set_password(self.validated_data['new_password'])
         user.save()
+
+class BlogPostSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating and updating blog posts.
+    """
+    class Meta:
+        model = BlogPost
+        fields = ['id', 'title', 'content', 'author', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'author', 'created_at', 'updated_at']
+
+class BlogPostDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for retrieving a single blog post.
+    """
+    class Meta:
+        model = BlogPost
+        fields = ['id', 'title', 'content', 'author', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'author', 'created_at', 'updated_at']
+
